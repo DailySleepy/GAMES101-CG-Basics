@@ -57,3 +57,4 @@ elseif(WIN32 AND OpenCV_FOUND)
         )
     endif()
 endif()
+

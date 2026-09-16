@@ -80,12 +80,6 @@ public:
         objl::Loader loader;
         loader.LoadFile(filename);
 
-        if (!loader.LoadFile(filename)) {
-            std::cerr << "Failed to load file: " << filename << std::endl;
-            return;
-        }
-        std::cout << "LoadedMeshes size: " << loader.LoadedMeshes.size() << std::endl;
-
         assert(loader.LoadedMeshes.size() == 1);
         auto mesh = loader.LoadedMeshes[0];
 
@@ -216,12 +210,6 @@ inline Bounds3 Triangle::getBounds() { return Union(Bounds3(v0, v1), v2); }
 
 inline Intersection Triangle::getIntersection(Ray ray)
 {
-    //Ray::
-    ////Destination = origin + t*direction
-    //Vector3f origin;
-    //Vector3f direction, direction_inv;
-    //double t;//transportation time,
-    //double t_min, t_max;
     Intersection inter;
 
     if (dotProduct(ray.direction, normal) > 0)
@@ -242,16 +230,11 @@ inline Intersection Triangle::getIntersection(Ray ray)
     if (v < 0 || u + v > 1)
         return inter;
     t_tmp = dotProduct(e2, qvec) * det_inv;
-    if (t_tmp < 0)return inter;
 
     // TODO find ray triangle intersection
 
-    inter.happened = true;
-    inter.distance = t_tmp;
-    inter.coords = ray.origin + t_tmp * ray.direction;
-    inter.normal = normal;
-    inter.m = m;
-    inter.obj = this;
+
+
 
     return inter;
 }

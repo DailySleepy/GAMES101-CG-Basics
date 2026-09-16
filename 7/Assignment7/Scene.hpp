@@ -22,7 +22,7 @@ public:
     double fov = 40;
     Vector3f backgroundColor = Vector3f(0.235294, 0.67451, 0.843137);
     int maxDepth = 1;
-    float RR = 0.8;
+    float RussianRoulette = 0.8;
 
     Scene(int w, int h) : width(w), height(h)
     {}
@@ -36,8 +36,6 @@ public:
     BVHAccel *bvh;
     void buildBVH();
     Vector3f castRay(const Ray &ray, int depth) const;
-    //Vector3f shade(Intersection& p_inter, Vector3f& wo) const;
-    Vector3f shade(const Intersection& p_inter, const Vector3f& wo, int depth) const;
     void sampleLight(Intersection &pos, float &pdf) const;
     bool trace(const Ray &ray, const std::vector<Object*> &objects, float &tNear, uint32_t &index, Object **hitObject);
     std::tuple<Vector3f, Vector3f> HandleAreaLight(const AreaLight &light, const Vector3f &hitPoint, const Vector3f &N,

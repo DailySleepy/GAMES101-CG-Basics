@@ -44,12 +44,6 @@ public:
     const int maxPrimsInNode;
     const SplitMethod splitMethod;
     std::vector<Object*> primitives;
-
-    double calculateSAH(int leftNum, int rightNum, Bounds3& leftbounds, Bounds3& rightbounds) {
-        double leftArea = leftbounds.SurfaceArea();
-        double rightArea = rightbounds.SurfaceArea();
-        return leftNum * leftArea + rightNum * rightArea + 1;
-    }
 };
 
 struct BVHBuildNode {

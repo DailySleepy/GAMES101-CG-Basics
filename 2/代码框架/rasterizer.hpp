@@ -4,12 +4,11 @@
 
 #pragma once
 
-#include <Eigen/Eigen>
+#include <eigen3/Eigen/Eigen>
 #include <algorithm>
 #include "global.hpp"
 #include "Triangle.hpp"
 using namespace Eigen;
-using namespace std;
 
 namespace rst
 {
@@ -92,10 +91,8 @@ namespace rst
         std::map<int, std::vector<Eigen::Vector3f>> col_buf;
 
         std::vector<Eigen::Vector3f> frame_buf;
-        std::vector<vector<Vector3f>> frame_buf_2xSSAA;
 
         std::vector<float> depth_buf;
-        std::vector<vector<float>> depth_buf_2xSSAA;
         int get_index(int x, int y);
 
         int width, height;

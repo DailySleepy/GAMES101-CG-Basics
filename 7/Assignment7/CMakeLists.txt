@@ -33,3 +33,4 @@ find_package(OpenMP)
 if(OpenMP_CXX_FOUND)
     target_link_libraries(Assignment7 PRIVATE OpenMP::OpenMP_CXX)
 endif()
+
