@@ -43,3 +43,22 @@ target_include_directories(Assignment3 PRIVATE
     ${OpenCV_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIRS}
 )
+
+if(COMMAND setup_opencv_runtime)
+    setup_opencv_runtime(Assignment3)
+elseif(WIN32 AND OpenCV_FOUND)
+    set(OPENCV_BIN_DIR "${OpenCV_DIR}/${OpenCV_ARCH}/${OpenCV_RUNTIME}/bin")
+    if(EXISTS "${OPENCV_BIN_DIR}")
+        set_target_properties(Assignment3 PROPERTIES
+            VS_DEBUGGER_ENVIRONMENT "PATH=${OPENCV_BIN_DIR};%PATH%"
+        )
+        add_custom_command(TARGET Assignment3 POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "$<$<CONFIG:Debug>:${OPENCV_BIN_DIR}/opencv_world${OpenCV_VERSION_MAJOR}${OpenCV_VERSION_MINOR}0d.dll>$<$<NOT:$<CONFIG:Debug>>:${OPENCV_BIN_DIR}/opencv_world${OpenCV_VERSION_MAJOR}${OpenCV_VERSION_MINOR}0.dll>"
+                "$<TARGET_FILE_DIR:Assignment3>"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${OPENCV_BIN_DIR}/opencv_videoio_ffmpeg${OpenCV_VERSION_MAJOR}${OpenCV_VERSION_MINOR}0_64.dll"
+                "$<TARGET_FILE_DIR:Assignment3>"
+        )
+    endif()
+endif()

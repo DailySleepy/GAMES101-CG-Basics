@@ -37,6 +37,29 @@ endif()
 find_package(OpenCV REQUIRED)
 if(OpenCV_FOUND)
     message(STATUS "Found OpenCV: ${OpenCV_INCLUDE_DIRS} (version: ${OpenCV_VERSION})")
+
+    # 定义自动注入 VS 调试环境和拷贝 OpenCV DLL 的辅助函数
+    function(setup_opencv_runtime TARGET_NAME)
+        if(WIN32)
+            set(OPENCV_BIN_DIR "${OpenCV_DIR}/${OpenCV_ARCH}/${OpenCV_RUNTIME}/bin")
+            if(EXISTS "${OPENCV_BIN_DIR}")
+                # 1. 注入 Visual Studio 调试环境变量，F5 运行时自动加载 DLL
+                set_target_properties(${TARGET_NAME} PROPERTIES
+                    VS_DEBUGGER_ENVIRONMENT "PATH=${OPENCV_BIN_DIR};%PATH%"
+                )
+                # 2. 构建完成后将对应配置的 DLL 复制到可执行文件所在目录
+                add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                        "$<$<CONFIG:Debug>:${OPENCV_BIN_DIR}/opencv_world${OpenCV_VERSION_MAJOR}${OpenCV_VERSION_MINOR}0d.dll>$<$<NOT:$<CONFIG:Debug>>:${OPENCV_BIN_DIR}/opencv_world${OpenCV_VERSION_MAJOR}${OpenCV_VERSION_MINOR}0.dll>"
+                        "$<TARGET_FILE_DIR:${TARGET_NAME}>"
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                        "${OPENCV_BIN_DIR}/opencv_videoio_ffmpeg${OpenCV_VERSION_MAJOR}${OpenCV_VERSION_MINOR}0_64.dll"
+                        "$<TARGET_FILE_DIR:${TARGET_NAME}>"
+                    COMMENT "Copying OpenCV runtime DLLs for ${TARGET_NAME}..."
+                )
+            endif()
+        endif()
+    endfunction()
 endif()
 
 message(STATUS "=========================================================")
