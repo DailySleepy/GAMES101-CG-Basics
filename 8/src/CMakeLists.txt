@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.10)
 
 # Application source
 set(APPLICATION_SOURCE
@@ -30,9 +30,9 @@ link_directories(
 #-------------------------------------------------------------------------------
 # Add executable
 #-------------------------------------------------------------------------------
-add_executable(ropesim ${APPLICATION_SOURCE})
+add_executable(Assignment8 ${APPLICATION_SOURCE})
 
-target_link_libraries( ropesim
+target_link_libraries( Assignment8
     CGL ${CGL_LIBRARIES}
     glew ${GLEW_LIBRARIES}
     glfw ${GLFW_LIBRARIES}
@@ -45,7 +45,7 @@ target_link_libraries( ropesim
 # Platform-specific configurations for target
 #-------------------------------------------------------------------------------
 if(APPLE)
-  set_property( TARGET ropesim APPEND_STRING PROPERTY COMPILE_FLAGS
+  set_property( TARGET Assignment8 APPEND_STRING PROPERTY COMPILE_FLAGS
                 "-Wno-deprecated-declarations -Wno-c++11-extensions")
 endif(APPLE)
 
@@ -53,4 +53,4 @@ endif(APPLE)
 set(EXECUTABLE_OUTPUT_PATH ..)
 
 # Install to project root
-install(TARGETS ropesim DESTINATION ${RopeSim_SOURCE_DIR})
+install(TARGETS Assignment8 DESTINATION ${RopeSim_SOURCE_DIR})

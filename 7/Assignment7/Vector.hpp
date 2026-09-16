@@ -47,7 +47,9 @@ public:
                        std::max(p1.z, p2.z));
     }
 
-    bool operator==(const Vector3f& other) const = default;
+    bool operator==(const Vector3f& other) const {
+        return x == other.x && y == other.y && z == other.z;
+    }
 };
 inline double Vector3f::operator[](int index) const {
     return (&x)[index];

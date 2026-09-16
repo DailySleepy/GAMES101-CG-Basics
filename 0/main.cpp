@@ -5,7 +5,7 @@
 
 using namespace std;
 
-int main0() 
+int main() 
 {
 	double PI = acos(-1);
 
