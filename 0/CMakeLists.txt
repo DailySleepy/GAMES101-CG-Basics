@@ -22,3 +22,8 @@ target_link_libraries(Assignment0 PRIVATE Eigen3::Eigen)
 if(DEFINED EIGEN3_INCLUDE_DIRS)
     target_include_directories(Assignment0 PRIVATE ${EIGEN3_INCLUDE_DIRS})
 endif()
+
+set_target_properties(Assignment0 PROPERTIES
+    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+

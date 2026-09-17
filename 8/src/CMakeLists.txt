@@ -54,3 +54,8 @@ set(EXECUTABLE_OUTPUT_PATH ..)
 
 # Install to project root
 install(TARGETS Assignment8 DESTINATION ${RopeSim_SOURCE_DIR})
+
+set_target_properties(Assignment8 PROPERTIES
+    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/.."
+)
+

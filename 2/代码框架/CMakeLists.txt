@@ -39,6 +39,10 @@ target_include_directories(Assignment2 PRIVATE
     ${EIGEN3_INCLUDE_DIRS}
 )
 
+set_target_properties(Assignment2 PROPERTIES
+    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
 if(COMMAND setup_opencv_runtime)
     setup_opencv_runtime(Assignment2)
 elseif(WIN32 AND OpenCV_FOUND)

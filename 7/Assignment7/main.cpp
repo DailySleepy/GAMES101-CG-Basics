@@ -5,6 +5,8 @@
 #include "Vector.hpp"
 #include "global.hpp"
 #include <chrono>
+#include <fstream>
+#include <string>
 
 // In the main function of the program, we create the scene (create objects and
 // lights) as well as set the options for the render (image width and height,
@@ -25,12 +27,21 @@ int main(int argc, char** argv)
     Material* light = new Material(DIFFUSE, (8.0f * Vector3f(0.747f+0.058f, 0.747f+0.258f, 0.747f) + 15.6f * Vector3f(0.740f+0.287f,0.740f+0.160f,0.740f) + 18.4f *Vector3f(0.737f+0.642f,0.737f+0.159f,0.737f)));
     light->Kd = Vector3f(0.65f);
 
-    MeshTriangle floor("../models/cornellbox/floor.obj", white);
-    MeshTriangle shortbox("../models/cornellbox/shortbox.obj", white);
-    MeshTriangle tallbox("../models/cornellbox/tallbox.obj", white);
-    MeshTriangle left("../models/cornellbox/left.obj", red);
-    MeshTriangle right("../models/cornellbox/right.obj", green);
-    MeshTriangle light_("../models/cornellbox/light.obj", light);
+    std::string model_dir = "models/cornellbox/";
+    {
+        std::ifstream check_file(model_dir + "floor.obj");
+        if (!check_file.good()) {
+            model_dir = "../models/cornellbox/";
+        }
+    }
+
+    MeshTriangle floor(model_dir + "floor.obj", white);
+    MeshTriangle shortbox(model_dir + "shortbox.obj", white);
+    MeshTriangle tallbox(model_dir + "tallbox.obj", white);
+    MeshTriangle left(model_dir + "left.obj", red);
+    MeshTriangle right(model_dir + "right.obj", green);
+    MeshTriangle light_(model_dir + "light.obj", light);
+
 
     scene.Add(&floor);
     scene.Add(&shortbox);

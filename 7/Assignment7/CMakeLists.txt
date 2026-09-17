@@ -34,3 +34,8 @@ if(OpenMP_CXX_FOUND)
     target_link_libraries(Assignment7 PRIVATE OpenMP::OpenMP_CXX)
 endif()
 
+set_target_properties(Assignment7 PROPERTIES
+    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+

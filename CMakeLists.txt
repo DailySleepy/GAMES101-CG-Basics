@@ -41,13 +41,17 @@ if(OpenCV_FOUND)
     # 定义自动注入 VS 调试环境和拷贝 OpenCV DLL 的辅助函数
     function(setup_opencv_runtime TARGET_NAME)
         if(WIN32)
+            # 1. 注入 Visual Studio 调试工作目录为当前源码目录
+            set_target_properties(${TARGET_NAME} PROPERTIES
+                VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            )
             set(OPENCV_BIN_DIR "${OpenCV_DIR}/${OpenCV_ARCH}/${OpenCV_RUNTIME}/bin")
             if(EXISTS "${OPENCV_BIN_DIR}")
-                # 1. 注入 Visual Studio 调试环境变量，F5 运行时自动加载 DLL
+                # 2. 注入 Visual Studio 调试环境变量，F5 运行时自动加载 DLL
                 set_target_properties(${TARGET_NAME} PROPERTIES
                     VS_DEBUGGER_ENVIRONMENT "PATH=${OPENCV_BIN_DIR};%PATH%"
                 )
-                # 2. 构建完成后将对应配置的 DLL 复制到可执行文件所在目录
+                # 3. 构建完成后将对应配置的 DLL 复制到可执行文件所在目录
                 add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
                     COMMAND ${CMAKE_COMMAND} -E copy_if_different
                         "$<$<CONFIG:Debug>:${OPENCV_BIN_DIR}/opencv_world${OpenCV_VERSION_MAJOR}${OpenCV_VERSION_MINOR}0d.dll>$<$<NOT:$<CONFIG:Debug>>:${OPENCV_BIN_DIR}/opencv_world${OpenCV_VERSION_MAJOR}${OpenCV_VERSION_MINOR}0.dll>"
@@ -61,6 +65,16 @@ if(OpenCV_FOUND)
         endif()
     endfunction()
 endif()
+
+# 通用 VS 调试环境辅助函数（适用于无需 OpenCV 的纯 Eigen 或其它目标）
+function(setup_target_vs_debugger TARGET_NAME)
+    if(WIN32)
+        set_target_properties(${TARGET_NAME} PROPERTIES
+            VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        )
+    endif()
+endfunction()
+
 
 message(STATUS "=========================================================")
 

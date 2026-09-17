@@ -28,3 +28,8 @@ add_executable(Assignment6
 
 target_include_directories(Assignment6 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
+set_target_properties(Assignment6 PROPERTIES
+    VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+

@@ -15,10 +15,17 @@ public:
     Texture(const std::string& name)
     {
         image_data = cv::imread(name);
+        if (image_data.empty()) {
+            std::cerr << "Error: Texture failed to load from path: " << name << std::endl;
+            width = 0;
+            height = 0;
+            return;
+        }
         cv::cvtColor(image_data, image_data, cv::COLOR_RGB2BGR);
         width = image_data.cols;
         height = image_data.rows;
     }
+
 
     int width, height;
 

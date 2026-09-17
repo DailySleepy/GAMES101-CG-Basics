@@ -4,6 +4,8 @@
 #include "Vector.hpp"
 #include "global.hpp"
 #include <chrono>
+#include <fstream>
+#include <string>
 
 // In the main function of the program, we create the scene (create objects and
 // lights) as well as set the options for the render (image width and height,
@@ -13,7 +15,15 @@ int main(int argc, char** argv)
 {
     Scene scene(1280, 960);
 
-    MeshTriangle bunny("../models/bunny/bunny.obj");
+    std::string bunny_path = "models/bunny/bunny.obj";
+    {
+        std::ifstream check_file(bunny_path);
+        if (!check_file.good()) {
+            bunny_path = "../models/bunny/bunny.obj";
+        }
+    }
+    MeshTriangle bunny(bunny_path);
+
 
     scene.Add(&bunny);
     scene.Add(std::make_unique<Light>(Vector3f(-20, 70, 20), 1));
