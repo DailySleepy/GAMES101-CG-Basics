@@ -1,3 +1,58 @@
-build
-.vs
-stash
+# ====================================================================
+# GAMES101 Git Ignore Rules
+# ====================================================================
+
+# 1. 构建输出目录 (任意层级递归忽略)
+[Bb]uild/
+[Oo]ut/
+[Bb]in/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# 2. 编译中间件与二进制产物 (保护 models/ 下的 3D 模型 .obj)
+*.exe
+*.dll
+*.so
+*.dylib
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.a
+*.idb
+*.o
+*.obj
+!**/models/**/*.obj
+!**/models/*.obj
+
+# 3. IDE 与编辑器配置与缓存
+.vs/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
+*.user
+*.suo
+*.userosv
+*.sln.docstates
+
+# 4. 操作系统临时文件
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+Desktop.ini
+
+# 5. 作业运行生成的临时渲染图片 (防止污染版本控制)
+output.png
+image.png
+binary.ppm
+my_bezier_curve.png
+
+# 6. 本地工作区临时目录
+stash/
+
