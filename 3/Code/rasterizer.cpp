@@ -255,7 +255,30 @@ static Eigen::Vector2f interpolate(float alpha, float beta, float gamma, const E
 	return Eigen::Vector2f(u, v);
 }
 
-void rst::rasterizer::rasterize_triangle(const Triangle& t, const std::array<Eigen::Vector3f, 3>& view_pos)
+struct PerspectiveInterpolator
+{
+	float alpha, beta, gamma;
+	float w0_inv, w1_inv, w2_inv;
+	float corrected_w;
+
+	PerspectiveInterpolator(float a, float b, float c, float w0, float w1, float w2)
+		: alpha(a), beta(b), gamma(c)
+	{
+		w0_inv = 1.0f / w0;
+		w1_inv = 1.0f / w1;
+		w2_inv = 1.0f / w2;
+		float interpolated_inv_w = alpha * w0_inv + beta * w1_inv + gamma * w2_inv;
+		corrected_w = 1.0f / interpolated_inv_w;
+	}
+
+	template <typename T>
+	T interpolate(T v0, T v1, T v2)
+	{
+		return (v0 * alpha * w0_inv + v1 * beta * w1_inv + v2 * gamma * w2_inv) * corrected_w;
+	}
+};
+
+void rst::rasterizer::rasterize_triangle(const Triangle& t, const std::array<Eigen::Vector3f, 3>& viewspace_pos)
 {
 	// TODO: From your HW3, get the triangle rasterization code.
 	// TODO: Inside your rasterization loop:
@@ -278,6 +301,37 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t, const std::array<Eig
 	// Use: Instead of passing the triangle's color directly to the frame buffer, pass the color to the shaders first to get the final color;
 	// Use: auto pixel_color = fragment_shader(payload);
 
+	auto a = t.v[0], b = t.v[1], c = t.v[2];
+	int xMin = (int)std::floor(std::min({ a.x(), b.x(), c.x() })); xMin = std::max(xMin, 0);
+	int xMax = (int)std::ceil(std::max({ a.x(), b.x(), c.x() })); xMax = std::min(xMax, width - 1);
+	int yMin = (int)std::floor(std::min({ a.y(), b.y(), c.y() })); yMin = std::max(yMin, 0);
+	int yMax = (int)std::ceil(std::max({ a.y(), b.y(), c.y() })); yMax = std::min(yMax, height - 1);
+
+	for (int x = xMin; x <= xMax; x++)
+	{
+		for (int y = yMin; y <= yMax; y++)
+		{
+			auto [alpha, beta, gamma] = computeBarycentric2D(x + 0.5, y + 0.5, t.v);
+			if (alpha >= 0 && beta >= 0 && gamma >= 0)
+			{
+				int index = get_index(x, y);
+				float z_window = alpha * a.z() + beta * b.z() + gamma * c.z();
+				if (z_window < depth_buf[index])
+				{
+					depth_buf[index] = z_window;
+					PerspectiveInterpolator Interpolator(alpha, beta, gamma, t.v[0].w(), t.v[1].w(), t.v[2].w());
+					auto interpolated_color = Interpolator.interpolate(t.color[0], t.color[1], t.color[2]);
+					auto interpolated_normal = Interpolator.interpolate(t.normal[0], t.normal[1], t.normal[2]);
+					auto interpolated_texcoords = Interpolator.interpolate(t.tex_coords[0], t.tex_coords[1], t.tex_coords[2]);
+					auto interpolated_shadingcoords = Interpolator.interpolate(viewspace_pos[0], viewspace_pos[1], viewspace_pos[2]);
+					fragment_shader_payload payload(interpolated_color, interpolated_normal.normalized(), interpolated_texcoords, texture ? &*texture : nullptr);
+					payload.view_pos = interpolated_shadingcoords;
+					auto pixel_color = fragment_shader(payload);
+					set_pixel(Vector2i(x, y), pixel_color);
+				}
+			}
+		}
+	}
 }
 
 void rst::rasterizer::set_model(const Eigen::Matrix4f& m)
@@ -317,13 +371,13 @@ rst::rasterizer::rasterizer(int w, int h) : width(w), height(h)
 
 int rst::rasterizer::get_index(int x, int y)
 {
-	return (height - y) * width + x;
+	return (height - 1 - y) * width + x;
 }
 
 void rst::rasterizer::set_pixel(const Vector2i& point, const Eigen::Vector3f& color)
 {
 	//old index: auto ind = point.y() + point.x() * width;
-	int ind = (height - point.y()) * width + point.x();
+	int ind = (height - 1 - point.y()) * width + point.x();
 	frame_buf[ind] = color;
 }
 
