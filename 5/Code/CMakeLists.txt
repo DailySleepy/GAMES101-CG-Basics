@@ -25,6 +25,11 @@ endif()
 
 target_include_directories(Assignment5 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(Assignment5 PRIVATE OpenMP::OpenMP_CXX)
+endif()
+
 set_target_properties(Assignment5 PROPERTIES
     VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
