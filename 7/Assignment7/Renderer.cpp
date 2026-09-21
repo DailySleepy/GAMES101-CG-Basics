@@ -24,22 +24,32 @@ void Renderer::Render(const Scene& scene)
     int m = 0;
 
     // change the spp value to change sample ammount
-    int spp = 16;
+    int spp = 8;
     std::cout << "SPP: " << spp << "\n";
-    for (uint32_t j = 0; j < scene.height; ++j) {
-        for (uint32_t i = 0; i < scene.width; ++i) {
+    int completed_rows = 0;
+
+    #pragma omp parallel for schedule(dynamic, 1)
+    for (int j = 0; j < (int)scene.height; ++j) {
+        for (int i = 0; i < (int)scene.width; ++i) {
             // generate primary ray direction
             float x = (2 * (i + 0.5) / (float)scene.width - 1) *
                       imageAspectRatio * scale;
             float y = (1 - 2 * (j + 0.5) / (float)scene.height) * scale;
 
             Vector3f dir = normalize(Vector3f(-x, y, 1));
+            int index = j * scene.width + i;
             for (int k = 0; k < spp; k++){
-                framebuffer[m] += scene.castRay(Ray(eye_pos, dir), 0) / spp;  
+                framebuffer[index] += scene.castRay(Ray(eye_pos, dir), 0) / spp;  
             }
-            m++;
         }
-        UpdateProgress(j / (float)scene.height);
+
+        #pragma omp atomic
+        completed_rows++;
+
+        if (completed_rows % 5 == 0 || completed_rows == (int)scene.height) {
+            #pragma omp critical
+            UpdateProgress(completed_rows / (float)scene.height);
+        }
     }
     UpdateProgress(1.f);
 

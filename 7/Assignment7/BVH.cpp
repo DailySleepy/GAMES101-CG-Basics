@@ -1,5 +1,7 @@
 #include <algorithm>
 #include <cassert>
+#include <chrono>
+#include <iostream>
 #include "BVH.hpp"
 
 BVHAccel::BVHAccel(std::vector<Object*> p, int maxPrimsInNode,
@@ -7,22 +9,17 @@ BVHAccel::BVHAccel(std::vector<Object*> p, int maxPrimsInNode,
     : maxPrimsInNode(std::min(255, maxPrimsInNode)), splitMethod(splitMethod),
       primitives(std::move(p))
 {
-    time_t start, stop;
-    time(&start);
+    auto start = std::chrono::high_resolution_clock::now();
     if (primitives.empty())
         return;
 
     root = recursiveBuild(primitives);
 
-    time(&stop);
-    double diff = difftime(stop, start);
-    int hrs = (int)diff / 3600;
-    int mins = ((int)diff / 60) - (hrs * 60);
-    int secs = (int)diff - (hrs * 3600) - (mins * 60);
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
 
-    printf(
-        "\rBVH Generation complete: \nTime Taken: %i hrs, %i mins, %i secs\n\n",
-        hrs, mins, secs);
+    std::cout << "\rBVH Generation complete: \nTime Taken: " << diff << " ms ("
+              << (splitMethod == SplitMethod::SAH ? "SAH" : "NAIVE") << ")\n\n";
 }
 
 BVHBuildNode* BVHAccel::recursiveBuild(std::vector<Object*> objects)
@@ -51,38 +48,105 @@ BVHBuildNode* BVHAccel::recursiveBuild(std::vector<Object*> objects)
         return node;
     }
     else {
-        Bounds3 centroidBounds;
-        for (int i = 0; i < objects.size(); ++i)
-            centroidBounds =
-                Union(centroidBounds, objects[i]->getBounds().Centroid());
-        int dim = centroidBounds.maxExtent();
-        switch (dim) {
-        case 0:
-            std::sort(objects.begin(), objects.end(), [](auto f1, auto f2) {
-                return f1->getBounds().Centroid().x <
-                       f2->getBounds().Centroid().x;
-            });
-            break;
-        case 1:
-            std::sort(objects.begin(), objects.end(), [](auto f1, auto f2) {
-                return f1->getBounds().Centroid().y <
-                       f2->getBounds().Centroid().y;
-            });
-            break;
-        case 2:
-            std::sort(objects.begin(), objects.end(), [](auto f1, auto f2) {
-                return f1->getBounds().Centroid().z <
-                       f2->getBounds().Centroid().z;
-            });
-            break;
+        std::vector<Object*> leftshapes;
+        std::vector<Object*> rightshapes;
+
+        if (splitMethod == SplitMethod::NAIVE) {
+            Bounds3 centroidBounds;
+            for (int i = 0; i < objects.size(); ++i)
+                centroidBounds =
+                    Union(centroidBounds, objects[i]->getBounds().Centroid());
+            int dim = centroidBounds.maxExtent();
+            switch (dim) {
+            case 0:
+                std::sort(objects.begin(), objects.end(), [](auto f1, auto f2) {
+                    return f1->getBounds().Centroid().x <
+                           f2->getBounds().Centroid().x;
+                });
+                break;
+            case 1:
+                std::sort(objects.begin(), objects.end(), [](auto f1, auto f2) {
+                    return f1->getBounds().Centroid().y <
+                           f2->getBounds().Centroid().y;
+                });
+                break;
+            case 2:
+                std::sort(objects.begin(), objects.end(), [](auto f1, auto f2) {
+                    return f1->getBounds().Centroid().z <
+                           f2->getBounds().Centroid().z;
+                });
+                break;
+            }
+
+            auto beginning = objects.begin();
+            auto middling = objects.begin() + (objects.size() / 2);
+            auto ending = objects.end();
+
+            leftshapes = std::vector<Object*>(beginning, middling);
+            rightshapes = std::vector<Object*>(middling, ending);
         }
+        else if (splitMethod == SplitMethod::SAH) {
+            constexpr float TRAVERSAL_COST = 1.0f;
+            constexpr float INTERSECTION_COST = 1.0f;
+            float minCost = std::numeric_limits<float>::infinity();
+            float totalArea = bounds.SurfaceArea();
+            if (totalArea <= 0.0f) totalArea = 1e-4f;
+            int bestAxis = 0;
+            int bestIndex = 1;
+            int n = objects.size();
 
-        auto beginning = objects.begin();
-        auto middling = objects.begin() + (objects.size() / 2);
-        auto ending = objects.end();
+            for (int axis = 0; axis < 3; axis++)
+            {
+                std::sort(objects.begin(), objects.end(), [axis](auto f1, auto f2)
+                {
+                    return f1->getBounds().Centroid()[axis] <
+                        f2->getBounds().Centroid()[axis];
+                });
 
-        auto leftshapes = std::vector<Object*>(beginning, middling);
-        auto rightshapes = std::vector<Object*>(middling, ending);
+                std::vector<Bounds3> prefixBounds(n), suffixBounds(n);
+
+                prefixBounds[0] = objects[0]->getBounds();
+                for (int i = 1; i < n; i++)
+                {
+                    prefixBounds[i] = Union(prefixBounds[i - 1], objects[i]->getBounds());
+                }
+
+                suffixBounds[n - 1] = objects[n - 1]->getBounds();
+                for (int i = n - 2; i >= 0; i--)
+                {
+                    suffixBounds[i] = Union(suffixBounds[i + 1], objects[i]->getBounds());
+                }
+
+                for (int i = 1; i < n; i++)
+                {
+                    float sA = prefixBounds[i - 1].SurfaceArea();
+                    float sB = suffixBounds[i].SurfaceArea();
+                    float nA = i;
+                    float nB = n - i;
+
+                    float cost = TRAVERSAL_COST + INTERSECTION_COST * (sA * nA + sB * nB) / totalArea;
+                    if (cost < minCost)
+                    {
+                        minCost = cost;
+                        bestAxis = axis;
+                        bestIndex = i;
+                    }
+                }
+            }
+
+            std::sort(objects.begin(), objects.end(), [bestAxis](auto f1, auto f2)
+            {
+                return f1->getBounds().Centroid()[bestAxis] <
+                    f2->getBounds().Centroid()[bestAxis];
+            });
+
+            auto beginning = objects.begin();
+            auto middling = objects.begin() + bestIndex;
+            auto ending = objects.end();
+
+            leftshapes = std::vector<Object*>(beginning, middling);
+            rightshapes = std::vector<Object*>(middling, ending);
+        }
 
         assert(objects.size() == (leftshapes.size() + rightshapes.size()));
 
@@ -107,8 +171,17 @@ Intersection BVHAccel::Intersect(const Ray& ray) const
 
 Intersection BVHAccel::getIntersection(BVHBuildNode* node, const Ray& ray) const
 {
-    // TODO Traverse the BVH to find intersection
     Intersection isect;
+    if (node != nullptr && node->bounds.IntersectP(ray, ray.direction_inv, ray.dirIsNeg))
+    {
+        if (node->object)
+        {
+            return node->object->getIntersection(ray);
+        }
+        auto hit1 = getIntersection(node->left, ray);
+        auto hit2 = getIntersection(node->right, ray);
+        isect = hit1.distance < hit2.distance ? hit1 : hit2;
+    }
     return isect;
 }
 
@@ -124,7 +197,7 @@ void BVHAccel::getSample(BVHBuildNode* node, float p, Intersection &pos, float &
 }
 
 void BVHAccel::Sample(Intersection &pos, float &pdf){
-    float p = std::sqrt(get_random_float()) * root->area;
+    float p = get_random_float() * root->area;
     getSample(root, p, pos, pdf);
     pdf /= root->area;
 }

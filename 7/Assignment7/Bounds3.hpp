@@ -8,6 +8,7 @@
 #include "Vector.hpp"
 #include <limits>
 #include <array>
+#include <cmath>
 
 class Bounds3
 {
@@ -95,8 +96,21 @@ inline bool Bounds3::IntersectP(const Ray& ray, const Vector3f& invDir,
 {
     // invDir: ray direction(x,y,z), invDir=(1.0/x,1.0/y,1.0/z), use this because Multiply is faster that Division
     // dirIsNeg: ray direction(x,y,z), dirIsNeg=[int(x>0),int(y>0),int(z>0)], use this to simplify your logic
-    // TODO test if ray bound intersects
-    return false;
+    auto tMin = (pMin - ray.origin) * invDir;
+    auto tMax = (pMax - ray.origin) * invDir;
+    for (int axis = 0; axis < 3; axis++)
+    {
+        if (dirIsNeg[axis]) std::swap(tMin[axis], tMax[axis]);
+    }
+
+    float timeIn = 0.f, timeOut = std::numeric_limits<float>::infinity();
+    for (int axis = 0; axis < 3; axis++)
+    {
+        timeIn = std::fmax(timeIn, tMin[axis]);
+        timeOut = std::fmin(timeOut, tMax[axis]);
+    }
+
+    return timeIn <= timeOut && timeOut >= 0.f;
 }
 
 inline Bounds3 Union(const Bounds3& b1, const Bounds3& b2)

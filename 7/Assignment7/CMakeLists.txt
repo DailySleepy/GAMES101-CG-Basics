@@ -29,9 +29,14 @@ add_executable(Assignment7
 target_include_directories(Assignment7 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 # 启用 OpenMP 多线程加速（Renderer.cpp 中包含 #pragma omp 并行渲染）
-find_package(OpenMP)
-if(OpenMP_CXX_FOUND)
-    target_link_libraries(Assignment7 PRIVATE OpenMP::OpenMP_CXX)
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(Assignment7 PRIVATE -fopenmp)
+    target_link_options(Assignment7 PRIVATE -fopenmp)
+else()
+    find_package(OpenMP)
+    if(OpenMP_CXX_FOUND)
+        target_link_libraries(Assignment7 PRIVATE OpenMP::OpenMP_CXX)
+    endif()
 endif()
 
 set_target_properties(Assignment7 PROPERTIES

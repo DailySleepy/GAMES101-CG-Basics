@@ -93,6 +93,7 @@ public:
     Vector3f Kd, Ks;
     float specularExponent;
     //Texture tex;
+    bool use_importance_sampling = true;
 
     inline Material(MaterialType t=DIFFUSE, Vector3f e=Vector3f(0,0,0));
     inline MaterialType getType();
@@ -114,6 +115,7 @@ Material::Material(MaterialType t, Vector3f e){
     m_type = t;
     //m_color = c;
     m_emission = e;
+    use_importance_sampling = true;
 }
 
 MaterialType Material::getType(){return m_type;}
@@ -133,14 +135,26 @@ Vector3f Material::sample(const Vector3f &wi, const Vector3f &N){
     switch(m_type){
         case DIFFUSE:
         {
-            // uniform sample on the hemisphere
             float x_1 = get_random_float(), x_2 = get_random_float();
-            float z = std::fabs(1.0f - 2.0f * x_1);
-            float r = std::sqrt(1.0f - z * z), phi = 2 * M_PI * x_2;
-            Vector3f localRay(r*std::cos(phi), r*std::sin(phi), z);
+            float phi = 2.0f * M_PI * x_2;
+            float x, y, z;
+
+            if (use_importance_sampling) {
+                // Cosine-weighted hemisphere sampling
+                float r = std::sqrt(x_1);
+                x = r * std::cos(phi);
+                y = r * std::sin(phi);
+                z = std::sqrt(std::max(0.0f, 1.0f - x_1));
+            } else {
+                // Uniform hemisphere sampling
+                z = x_1;
+                float r = std::sqrt(std::max(0.0f, 1.0f - z * z));
+                x = r * std::cos(phi);
+                y = r * std::sin(phi);
+            }
+
+            Vector3f localRay(x, y, z);
             return toWorld(localRay, N);
-            
-            break;
         }
     }
 }
@@ -149,11 +163,17 @@ float Material::pdf(const Vector3f &wi, const Vector3f &wo, const Vector3f &N){
     switch(m_type){
         case DIFFUSE:
         {
-            // uniform sample probability 1 / (2 * PI)
-            if (dotProduct(wo, N) > 0.0f)
-                return 0.5f / M_PI;
-            else
+            float cos_theta = dotProduct(wi, N);
+            float cos_theta_prime = dotProduct(wo, N);
+            if (cos_theta > 0.0f && cos_theta_prime > 0.0f) {
+                if (use_importance_sampling) {
+                    return cos_theta / M_PI;
+                } else {
+                    return 0.5f / M_PI;
+                }
+            } else {
                 return 0.0f;
+            }
             break;
         }
     }
@@ -164,8 +184,9 @@ Vector3f Material::eval(const Vector3f &wi, const Vector3f &wo, const Vector3f &
         case DIFFUSE:
         {
             // calculate the contribution of diffuse   model
-            float cosalpha = dotProduct(N, wo);
-            if (cosalpha > 0.0f) {
+            float cos_theta = dotProduct(wi, N);
+            float cos_theta_prime = dotProduct(wo, N);
+            if (cos_theta > 0.0f && cos_theta_prime > 0.0f) {
                 Vector3f diffuse = Kd / M_PI;
                 return diffuse;
             }
