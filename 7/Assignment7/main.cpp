@@ -27,11 +27,24 @@ int main(int argc, char** argv)
     Material* light = new Material(DIFFUSE, (8.0f * Vector3f(0.747f+0.058f, 0.747f+0.258f, 0.747f) + 15.6f * Vector3f(0.740f+0.287f,0.740f+0.160f,0.740f) + 18.4f *Vector3f(0.737f+0.642f,0.737f+0.159f,0.737f)));
     light->Kd = Vector3f(0.65f);
 
+    Material* gold = new Material(MICROFACET, Vector3f(0.0f));
+    gold->Kd = Vector3f(1.0f, 0.71f, 0.29f); // 黄金固有色
+    gold->roughness = 0.35f;                 // 粗糙度
+    gold->metallic = 1.0f;                  // 纯金属导体
+
     std::string model_dir = "models/cornellbox/";
     {
         std::ifstream check_file(model_dir + "floor.obj");
         if (!check_file.good()) {
             model_dir = "../models/cornellbox/";
+        }
+    }
+
+    std::string bunny_path = "models/bunny/bunny.obj";
+    {
+        std::ifstream check_file(bunny_path);
+        if (!check_file.good()) {
+            bunny_path = "../models/bunny/bunny.obj";
         }
     }
 
@@ -41,14 +54,17 @@ int main(int argc, char** argv)
     MeshTriangle left(model_dir + "left.obj", red);
     MeshTriangle right(model_dir + "right.obj", green);
     MeshTriangle light_(model_dir + "light.obj", light);
-
+    MeshTriangle bunny(bunny_path, gold, Vector3f(200.0f, -50.0f, 200.0f), Vector3f(1500.0f, 1500.0f, 1500.0f), 180.0f);
+    Sphere sphere(Vector3f(350, 100, 350), 100, white);
 
     scene.Add(&floor);
-    scene.Add(&shortbox);
-    scene.Add(&tallbox);
+    //scene.Add(&shortbox);
+    //scene.Add(&tallbox);
     scene.Add(&left);
     scene.Add(&right);
     scene.Add(&light_);
+    scene.Add(&bunny);
+    //scene.Add(&sphere);
 
     scene.buildBVH();
 

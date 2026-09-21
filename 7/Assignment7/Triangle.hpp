@@ -89,7 +89,10 @@ public:
 class MeshTriangle : public Object
 {
 public:
-    MeshTriangle(const std::string& filename, Material *mt = new Material())
+    MeshTriangle(const std::string& filename, Material *mt = new Material(),
+                 const Vector3f& translation = Vector3f(0.0f),
+                 const Vector3f& scale = Vector3f(1.0f),
+                 float rotate_y_deg = 0.0f)
     {
         objl::Loader loader;
         loader.LoadFile(filename);
@@ -97,6 +100,9 @@ public:
         m = mt;
         assert(loader.LoadedMeshes.size() == 1);
         auto mesh = loader.LoadedMeshes[0];
+
+        float rad = rotate_y_deg * M_PI / 180.0f;
+        float cos_theta = std::cos(rad), sin_theta = std::sin(rad);
 
         Vector3f min_vert = Vector3f{std::numeric_limits<float>::infinity(),
                                      std::numeric_limits<float>::infinity(),
@@ -108,9 +114,14 @@ public:
             std::array<Vector3f, 3> face_vertices;
 
             for (int j = 0; j < 3; j++) {
-                auto vert = Vector3f(mesh.Vertices[i + j].Position.X,
-                                     mesh.Vertices[i + j].Position.Y,
-                                     mesh.Vertices[i + j].Position.Z);
+                float vx = mesh.Vertices[i + j].Position.X * scale.x;
+                float vy = mesh.Vertices[i + j].Position.Y * scale.y;
+                float vz = mesh.Vertices[i + j].Position.Z * scale.z;
+
+                float rx = vx * cos_theta + vz * sin_theta;
+                float rz = -vx * sin_theta + vz * cos_theta;
+
+                auto vert = Vector3f(rx + translation.x, vy + translation.y, rz + translation.z);
                 face_vertices[j] = vert;
 
                 min_vert = Vector3f(std::min(min_vert.x, vert.x),

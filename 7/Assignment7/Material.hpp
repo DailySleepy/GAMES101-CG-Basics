@@ -7,7 +7,7 @@
 
 #include "Vector.hpp"
 
-enum MaterialType { DIFFUSE};
+enum MaterialType { DIFFUSE, MICROFACET };
 
 class Material{
 private:
@@ -85,6 +85,30 @@ private:
         return a.x * B + a.y * C + a.z * N;
     }
 
+    // Microfacet GGX helper functions
+    float DistributionGGX(const Vector3f &N, const Vector3f &H, float alpha) const {
+        float NdotH = std::max(0.0f, dotProduct(N, H));
+        float alpha2 = alpha * alpha;
+        float denom = (NdotH * NdotH * (alpha2 - 1.0f) + 1.0f);
+        return alpha2 / (M_PI * denom * denom);
+    }
+
+    float GeometrySchlickGGX(float NdotV, float k) const {
+        return NdotV / (NdotV * (1.0f - k) + k);
+    }
+
+    float GeometrySmith(const Vector3f &N, const Vector3f &V, const Vector3f &L, float alpha) const {
+        float NdotV = std::max(0.0f, dotProduct(N, V));
+        float NdotL = std::max(0.0f, dotProduct(N, L));
+        float k = alpha / 2.0f;
+        return GeometrySchlickGGX(NdotV, k) * GeometrySchlickGGX(NdotL, k);
+    }
+
+    Vector3f FresnelSchlick(float cosTheta, const Vector3f &F0) const {
+        float factor = std::pow(std::max(0.0f, 1.0f - cosTheta), 5.0f);
+        return F0 + factor * (Vector3f(1.0f) - F0);
+    }
+
 public:
     MaterialType m_type;
     //Vector3f m_color;
@@ -94,6 +118,8 @@ public:
     float specularExponent;
     //Texture tex;
     bool use_importance_sampling = true;
+    float roughness = 0.35f;
+    float metallic = 1.0f;
 
     inline Material(MaterialType t=DIFFUSE, Vector3f e=Vector3f(0,0,0));
     inline MaterialType getType();
@@ -116,6 +142,8 @@ Material::Material(MaterialType t, Vector3f e){
     //m_color = c;
     m_emission = e;
     use_importance_sampling = true;
+    roughness = 0.35f;
+    metallic = 1.0f;
 }
 
 MaterialType Material::getType(){return m_type;}
@@ -156,6 +184,23 @@ Vector3f Material::sample(const Vector3f &wi, const Vector3f &N){
             Vector3f localRay(x, y, z);
             return toWorld(localRay, N);
         }
+        case MICROFACET:
+        {
+            // GGX NDF importance sampling for half-vector H
+            float alpha = std::max(0.001f, roughness * roughness);
+            float x_1 = get_random_float(), x_2 = get_random_float();
+            float phi = 2.0f * M_PI * x_2;
+
+            float cos_theta = std::sqrt((1.0f - x_1) / (1.0f + (alpha * alpha - 1.0f) * x_1));
+            float sin_theta = std::sqrt(std::max(0.0f, 1.0f - cos_theta * cos_theta));
+
+            Vector3f h_local(sin_theta * std::cos(phi), sin_theta * std::sin(phi), cos_theta);
+            Vector3f H = normalize(toWorld(h_local, N));
+
+            // Reflect view direction wi (wo in shading point) about microfacet normal H
+            Vector3f L = normalize(2.0f * dotProduct(wi, H) * H - wi);
+            return L;
+        }
     }
 }
 
@@ -176,6 +221,24 @@ float Material::pdf(const Vector3f &wi, const Vector3f &wo, const Vector3f &N){
             }
             break;
         }
+        case MICROFACET:
+        {
+            float NdotL = dotProduct(wi, N);
+            float NdotV = dotProduct(wo, N);
+            if (NdotL <= 0.0f || NdotV <= 0.0f)
+                return 0.0f;
+
+            Vector3f H = normalize(wi + wo);
+            float VdotH = std::max(0.0f, dotProduct(wo, H));
+            if (VdotH <= 0.0f) return 0.0f;
+
+            float alpha = std::max(0.001f, roughness * roughness);
+            float D = DistributionGGX(N, H, alpha);
+            float NdotH = std::max(0.0f, dotProduct(N, H));
+
+            // pdf = D * (N . H) / (4 * (V . H))
+            return (D * NdotH) / (4.0f * VdotH);
+        }
     }
 }
 
@@ -183,7 +246,7 @@ Vector3f Material::eval(const Vector3f &wi, const Vector3f &wo, const Vector3f &
     switch(m_type){
         case DIFFUSE:
         {
-            // calculate the contribution of diffuse   model
+            // calculate the contribution of diffuse model
             float cos_theta = dotProduct(wi, N);
             float cos_theta_prime = dotProduct(wo, N);
             if (cos_theta > 0.0f && cos_theta_prime > 0.0f) {
@@ -193,6 +256,28 @@ Vector3f Material::eval(const Vector3f &wi, const Vector3f &wo, const Vector3f &
             else
                 return Vector3f(0.0f);
             break;
+        }
+        case MICROFACET:
+        {
+            float NdotL = dotProduct(wi, N);
+            float NdotV = dotProduct(wo, N);
+            if (NdotL <= 0.0f || NdotV <= 0.0f)
+                return Vector3f(0.0f);
+
+            Vector3f H = normalize(wi + wo);
+            float VdotH = std::max(0.0f, dotProduct(wo, H));
+
+            float alpha = std::max(0.001f, roughness * roughness);
+            float D = DistributionGGX(N, H, alpha);
+            float G = GeometrySmith(N, wo, wi, alpha);
+
+            Vector3f F0 = lerp(Vector3f(0.04f), Kd, metallic);
+            Vector3f F = FresnelSchlick(VdotH, F0);
+
+            Vector3f specular = (D * G / (4.0f * NdotL * NdotV)) * F;
+            Vector3f diffuse = (1.0f - metallic) * (Vector3f(1.0f) - F) * (Kd / M_PI);
+
+            return diffuse + specular;
         }
     }
 }
