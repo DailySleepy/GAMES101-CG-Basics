@@ -21,9 +21,11 @@ void Renderer::Render(const Scene& scene)
     float scale = tan(deg2rad(scene.fov * 0.5));
     float imageAspectRatio = scene.width / (float)scene.height;
     Vector3f eye_pos(-1, 5, 10);
-    int m = 0;
-    for (uint32_t j = 0; j < scene.height; ++j) {
-        for (uint32_t i = 0; i < scene.width; ++i) {
+    int completed_rows = 0;
+
+    #pragma omp parallel for schedule(dynamic, 1)
+    for (int j = 0; j < (int)scene.height; ++j) {
+        for (int i = 0; i < (int)scene.width; ++i) {
             // generate primary ray direction
             float x = (2 * (i + 0.5) / (float)scene.width - 1) *
                       imageAspectRatio * scale;
@@ -35,9 +37,18 @@ void Renderer::Render(const Scene& scene)
             // *scale*, and x (horizontal) variable with the *imageAspectRatio*
 
             // Don't forget to normalize this direction!
-
+            Vector3f dir = normalize(Vector3f(x, y, -1));
+            Ray ray(eye_pos, dir);
+            framebuffer[j * scene.width + i] = scene.castRay(ray, scene.maxDepth);
         }
-        UpdateProgress(j / (float)scene.height);
+
+        #pragma omp atomic
+        completed_rows++;
+
+        if (completed_rows % 10 == 0 || completed_rows == (int)scene.height) {
+            #pragma omp critical
+            UpdateProgress(completed_rows / (float)scene.height);
+        }
     }
     UpdateProgress(1.f);
 

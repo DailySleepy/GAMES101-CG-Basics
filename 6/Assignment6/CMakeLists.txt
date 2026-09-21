@@ -28,6 +28,16 @@ add_executable(Assignment6
 
 target_include_directories(Assignment6 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(Assignment6 PRIVATE -fopenmp)
+    target_link_options(Assignment6 PRIVATE -fopenmp)
+else()
+    find_package(OpenMP)
+    if(OpenMP_CXX_FOUND)
+        target_link_libraries(Assignment6 PRIVATE OpenMP::OpenMP_CXX)
+    endif()
+endif()
+
 set_target_properties(Assignment6 PROPERTIES
     VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
